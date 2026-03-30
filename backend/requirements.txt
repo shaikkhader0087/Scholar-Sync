@@ -17,3 +17,6 @@ python-dotenv
 django-cors-headers
 python-docx
 dj-database-url
+firebase-admin
+gunicorn
+whitenoise
