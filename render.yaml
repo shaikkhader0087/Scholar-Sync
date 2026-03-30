@@ -4,6 +4,7 @@ services:
     name: scholar-sync-backend
     env: python
     region: oregon
+    plan: free
     rootDir: backend
     buildCommand: "./build.sh"
     startCommand: "gunicorn config.wsgi:application"
@@ -25,3 +26,4 @@ databases:
     databaseName: scholarsync
     user: scholar_user
     region: oregon
+    plan: free
