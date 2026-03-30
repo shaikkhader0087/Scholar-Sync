@@ -4,7 +4,7 @@ services:
     name: scholar-sync-backend
     env: python
     region: oregon
-    plan: starter
+    plan: free
     rootDir: backend
     buildCommand: "./build.sh"
     startCommand: "gunicorn config.wsgi:application --timeout 120"
@@ -26,4 +26,4 @@ databases:
     databaseName: scholarsync
     user: scholar_user
     region: oregon
-    plan: starter
+    plan: free
