@@ -10,7 +10,7 @@ class AIService:
     
     MAX_RETRIES = 3
     RETRY_DELAY = 4  # seconds between retries (increases with backoff)
-    CALL_DELAY = 3  # seconds between sequential API calls to avoid rate limits
+    CALL_DELAY = 0.5  # seconds between sequential API calls to avoid rate limits
     
     def __init__(self):
         # DeepSeek uses OpenAI-compatible API
