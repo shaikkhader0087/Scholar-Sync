@@ -429,13 +429,13 @@ Papers analyzed:
         return self._call_with_fallback(prompt, model_id)
     
     def process_document(self, file_content, model_id, custom_instructions=""):
-        """Process uploaded document and generate all analysis types"""
+        """Process uploaded document and generate all analysis types concurrently"""
+        import concurrent.futures
         results = {}
         
-        # Generate all analysis types with delays between calls to avoid rate limits
         task_types = ["summary", "qa", "study_guide", "faq", "key_topics"]
         
-        for i, task_type in enumerate(task_types):
+        def process_single_task(task_type):
             try:
                 prompt_key = task_type
                 if task_type == "study_guide":
@@ -443,20 +443,29 @@ Papers analyzed:
                 elif task_type == "key_topics":
                     prompt_key = "keyTopics"
                 
-                results[task_type] = self.generate_summary(file_content, model_id, prompt_key, custom_instructions)
+                # Add tiny random delay to prevent hitting API exactly at the exact same millisecond
+                import random
+                time.sleep(random.uniform(0.1, 1.5))
                 
-                # Add delay between calls to avoid rate limiting (skip after last call)
-                if i < len(task_types) - 1:
-                    time.sleep(self.CALL_DELAY)
-                    
+                return task_type, self.generate_summary(file_content, model_id, prompt_key, custom_instructions)
             except Exception as e:
-                results[task_type] = f"Error generating {task_type}: {str(e)}"
-        
-        # Generate flashcards
-        try:
-            time.sleep(self.CALL_DELAY)
-            results['flashcards'] = self.generate_flashcards(file_content, model_id, custom_instructions)
-        except Exception as e:
-            results['flashcards'] = '[]'
-        
+                return task_type, f"Error generating {task_type}: {str(e)}"
+                
+        def process_flashcards():
+            try:
+                import random
+                time.sleep(random.uniform(0.1, 1.5))
+                return 'flashcards', self.generate_flashcards(file_content, model_id, custom_instructions)
+            except Exception:
+                return 'flashcards', '[]'
+                
+        # Run all 6 AI generation tasks (5 strings + 1 flashcard json) simultaneously
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+            futures = [executor.submit(process_single_task, t) for t in task_types]
+            futures.append(executor.submit(process_flashcards))
+            
+            for future in concurrent.futures.as_completed(futures):
+                key, r_value = future.result()
+                results[key] = r_value
+                
         return results
