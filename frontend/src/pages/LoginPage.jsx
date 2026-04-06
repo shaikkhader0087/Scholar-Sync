@@ -170,7 +170,7 @@ export function LoginPage() {
     }
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="flex flex-1 w-full min-h-screen py-10 items-center justify-center bg-background px-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-1">
                     <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>

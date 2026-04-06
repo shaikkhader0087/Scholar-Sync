@@ -31,9 +31,9 @@ export function AdminDashboard() {
         fetchStats()
     }, [])
 
-    if (loading) return <div className="flex h-screen items-center justify-center">Loading dashboard...</div>
+    if (loading) return <div className="flex flex-1 w-full py-20 items-center justify-center">Loading dashboard...</div>
     if (error) return (
-        <div className="flex h-screen flex-col items-center justify-center gap-4">
+        <div className="flex flex-1 w-full py-20 flex-col items-center justify-center gap-4">
             <ShieldCheck className="h-16 w-16 text-destructive" />
             <h1 className="text-2xl font-bold">{error}</h1>
             <Button onClick={() => window.location.href = "/"}>Back to Home</Button>

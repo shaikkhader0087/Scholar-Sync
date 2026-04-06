@@ -18,11 +18,11 @@ const FloatingCard = ({ icon: Icon, title, color, delay, position }) => (
 
 export function Hero() {
     return (
-        <section className="relative min-h-[90vh] overflow-hidden bg-background">
+        <section className="relative min-h-[90vh] overflow-x-clip bg-background">
             {/* Subtle gradient background */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5" />
 
-            <div className="container relative z-10 flex flex-col items-center justify-center gap-12 py-32">
+            <div className="container px-4 md:px-6 mx-auto relative z-10 flex flex-col items-center justify-center gap-12 py-16 md:py-32">
                 {/* Top Content */}
                 <div className="flex flex-col items-center gap-6 text-center">
                     {/* Badge */}

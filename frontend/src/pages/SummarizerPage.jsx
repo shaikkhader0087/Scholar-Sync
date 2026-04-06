@@ -769,7 +769,7 @@ export function SummarizerPage() {
 
     /* ── Render ───────────────────────────────────────────────────── */
     return (
-        <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+        <div className="flex-1 w-full bg-gradient-to-b from-background to-muted/20">
             <div className="container mx-auto py-8 px-4 max-w-7xl">
                 {/* Header */}
                 <div className="mb-8">
@@ -1012,7 +1012,7 @@ export function SummarizerPage() {
 
                         {/* Chat tab */}
                         {!loading && activeTab === "chat" && (
-                            <Card className="border-border/50 shadow-sm flex flex-col" style={{ height: "calc(100vh - 280px)", minHeight: "500px" }}>
+                            <Card className="border-border/50 shadow-sm flex flex-col min-h-[500px] lg:h-[calc(100vh-280px)]">
                                 <CardContent className="flex-1 overflow-y-auto p-5 space-y-5">
                                     {chatMessages.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center h-full text-muted-foreground">

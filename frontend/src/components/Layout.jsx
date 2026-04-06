@@ -2,9 +2,9 @@ import { Header } from "@/components/Header"
 
 export function Layout({ children }) {
     return (
-        <div className="relative flex min-h-screen flex-col">
+        <div className="relative flex min-h-screen flex-col w-full overflow-x-hidden">
             <Header />
-            <div className="flex-1">{children}</div>
+            <main className="flex-1 flex flex-col w-full">{children}</main>
         </div>
     )
 }
