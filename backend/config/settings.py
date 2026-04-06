@@ -22,13 +22,16 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Initialize Firebase Admin
-cred_path = os.getenv('FIREBASE_CREDENTIALS')
-if cred_path and os.path.exists(cred_path):
-    cred = credentials.Certificate(cred_path)
-    firebase_admin.initialize_app(cred)
-else:
-    # Fallback to project ID for token verification without full credentials
-    firebase_admin.initialize_app(options={'projectId': 'scholar-sync-07'})
+try:
+    cred_path = os.getenv('FIREBASE_CREDENTIALS')
+    if cred_path and os.path.exists(cred_path):
+        cred = credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
+    else:
+        # Fallback: use project ID only (token verification still works via Firebase public keys)
+        firebase_admin.initialize_app(options={'projectId': 'scholar-sync-07'})
+except Exception as e:
+    print(f"WARNING: Firebase Admin SDK initialization failed: {e}. Auth may not work.")
 
 
 # Quick-start development settings - unsuitable for production
@@ -38,7 +41,7 @@ else:
 SECRET_KEY = 'django-insecure-qjvpf#a5@35nure#v*3d9qv5kvmn(f!$&d0%26&i4m+&968d^i'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = ['*']
 

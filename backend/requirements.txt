@@ -1,17 +1,10 @@
 django>=5.0
 djangorestframework
-celery
-redis
 psycopg2-binary
-neo4j
-qdrant-client
-langchain
-langchain-openai
 openai
 anthropic
 google-genai
 pymupdf
-spacy
 pdfplumber
 python-dotenv
 django-cors-headers

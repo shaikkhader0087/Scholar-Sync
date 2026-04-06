@@ -7,7 +7,9 @@ services:
     plan: free
     rootDir: backend
     buildCommand: "./build.sh"
-    startCommand: "gunicorn config.wsgi:application --timeout 120"
+    # Increased timeout to 300s for long AI analysis requests
+    # 2 workers so health check stays alive during heavy AI processing
+    startCommand: "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --timeout 300 --workers 2"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -18,7 +20,16 @@ services:
       - key: DEBUG
         value: "False"
       - key: PYTHON_VERSION
-        value: 3.10.13
+        value: "3.10.13"
+      # --- AI API Keys: set these manually in Render Dashboard ---
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
 
 databases:
   # The database service (PostgreSQL free tier)
