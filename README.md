@@ -35,7 +35,7 @@ An intelligent system to manage, analyze, and discover connections between resea
    ```
 
 ## Services
-- **Frontend**: http://localhost:5173
+- **Frontend**: https://scholar-sync-07.web.app
 - **Backend API**: http://localhost:8000
 - **Neo4j Browser**: http://localhost:7474
 - **Qdrant Dashboard**: http://localhost:6333/dashboard
