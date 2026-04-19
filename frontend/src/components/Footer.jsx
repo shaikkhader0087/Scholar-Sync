@@ -4,7 +4,7 @@ import { Github, Twitter, Linkedin } from "lucide-react"
 export function Footer() {
     return (
         <footer className="border-t bg-muted/50">
-            <div className="container py-12 md:py-16">
+            <div className="container mx-auto px-4 md:px-6 py-12 md:py-16">
                 <div className="grid gap-8 md:grid-cols-4">
                     {/* Brand */}
                     <div className="md:col-span-1">
@@ -59,8 +59,9 @@ export function Footer() {
                     </div>
                 </div>
 
-                <div className="mt-12 border-t pt-8 text-center text-sm text-muted-foreground">
-                    <p>© 2026 ScholarSyn. All rights reserved.</p>
+                <div className="mt-12 border-t pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+                    <p>© {new Date().getFullYear()} ScholarSyn. All rights reserved.</p>
+
                 </div>
             </div>
         </footer>

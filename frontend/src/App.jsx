@@ -27,8 +27,16 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/login" element={
+          <Layout>
+            <LoginPage />
+          </Layout>
+        } />
+        <Route path="/register" element={
+          <Layout>
+            <RegisterPage />
+          </Layout>
+        } />
         <Route path="/summarizer" element={
           <Layout>
             <SummarizerPage />

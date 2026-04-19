@@ -527,23 +527,34 @@ function MultiPaperFeature({ history, featureType }) {
 
 /* ── Markdown renderer component ─────────────────────────────────── */
 function MarkdownContent({ content }) {
-    if (!content) {
-        return (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                <Sparkles className="h-10 w-10 mb-3 opacity-30" />
-                <p className="text-sm">No content generated yet. Upload a paper to get started.</p>
-            </div>
-        )
+    if (!content) return null;
+    
+    // Clean up markdown block wrappers that the AI might add
+    let cleanContent = content;
+    if (typeof cleanContent === 'string') {
+        cleanContent = cleanContent.trim();
+        if (cleanContent.startsWith('```markdown')) {
+            cleanContent = cleanContent.slice(11);
+        } else if (cleanContent.startsWith('```')) {
+            cleanContent = cleanContent.slice(3);
+        }
+        if (cleanContent.endsWith('```')) {
+            cleanContent = cleanContent.slice(0, -3);
+        }
+        cleanContent = cleanContent.trim();
     }
+
     return (
         <div className="prose prose-sm max-w-none dark:prose-invert
-            prose-headings:text-foreground prose-p:text-foreground/90
+            prose-headings:text-foreground prose-headings:font-bold prose-headings:mt-6
+            prose-p:text-foreground/90 prose-p:leading-relaxed
             prose-strong:text-foreground prose-li:text-foreground/90
+            prose-ul:my-4 prose-ol:my-4
             prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
             prose-pre:bg-muted/50 prose-pre:border prose-pre:border-border
             prose-blockquote:border-primary/40 prose-blockquote:text-muted-foreground
             prose-a:text-primary prose-a:no-underline hover:prose-a:underline leading-relaxed">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{cleanContent}</ReactMarkdown>
         </div>
     )
 }
@@ -934,25 +945,27 @@ export function SummarizerPage() {
                     </div>
 
                     {/* ── Main content area ────────────────────────────────── */}
-                    <div>
+                    <div className="min-w-0">
                         <div className="mb-5">
                             <h2 className="text-2xl font-bold text-foreground">{title || "Start New Analysis"}</h2>
                             {title && <p className="text-sm text-muted-foreground mt-0.5">Select a tab to explore different perspectives</p>}
                         </div>
 
                         {/* Tab bar */}
-                        <div className="flex gap-1 mb-6 p-1 bg-muted/40 rounded-xl border border-border/40 overflow-x-auto">
-                            {TABS.map(({ key, label, icon: Icon }) => (
-                                <button key={key} onClick={() => setActiveTab(key)}
-                                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap
-                                        ${activeTab === key
-                                            ? "bg-background text-foreground shadow-sm border border-border/60"
-                                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
-                                    <Icon className="h-4 w-4" />
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
+                        {(!!results.summary || loading) && (
+                            <div className="flex gap-1 mb-6 p-1 bg-muted/40 rounded-xl border border-border/40 overflow-x-auto">
+                                {TABS.map(({ key, label, icon: Icon }) => (
+                                    <button key={key} onClick={() => setActiveTab(key)}
+                                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap
+                                            ${activeTab === key
+                                                ? "bg-background text-foreground shadow-sm border border-border/60"
+                                                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
+                                        <Icon className="h-4 w-4" />
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
 
                         {/* Loading skeleton */}
                         {loading && (
@@ -966,7 +979,7 @@ export function SummarizerPage() {
                         )}
 
                         {/* Standard text tabs */}
-                        {!loading && ["summary", "studyGuide", "faq", "keyTopics"].includes(activeTab) && (
+                        {!!results.summary && !loading && ["summary", "studyGuide", "faq", "keyTopics"].includes(activeTab) && (
                             <Card className="border-border/50 shadow-sm">
                                 <CardContent className="p-6">
                                     <MarkdownContent content={
@@ -980,7 +993,7 @@ export function SummarizerPage() {
                         )}
 
                         {/* Flashcards tab */}
-                        {!loading && activeTab === "flashcards" && (
+                        {!!results.summary && !loading && activeTab === "flashcards" && (
                             <Card className="border-border/50 shadow-sm">
                                 <CardContent className="p-6">
                                     <FlashcardsView
@@ -993,25 +1006,25 @@ export function SummarizerPage() {
                         )}
 
                         {/* Tables tab */}
-                        {!loading && activeTab === "tables" && (
+                        {!!results.summary && !loading && activeTab === "tables" && (
                             <TablesView tablesFigures={results.tablesFigures} />
                         )}
 
                         {/* Analytics tab */}
-                        {!loading && activeTab === "analytics" && <VisualInsights results={results} />}
+                        {!!results.summary && !loading && activeTab === "analytics" && <VisualInsights results={results} />}
 
                         {/* Literature Review tab */}
-                        {!loading && activeTab === "litReview" && (
+                        {!!results.summary && !loading && activeTab === "litReview" && (
                             <MultiPaperFeature history={history} featureType="litReview" />
                         )}
 
                         {/* Research Gaps tab */}
-                        {!loading && activeTab === "researchGaps" && (
+                        {!!results.summary && !loading && activeTab === "researchGaps" && (
                             <MultiPaperFeature history={history} featureType="researchGaps" />
                         )}
 
                         {/* Chat tab */}
-                        {!loading && activeTab === "chat" && (
+                        {!!results.summary && !loading && activeTab === "chat" && (
                             <Card className="border-border/50 shadow-sm flex flex-col min-h-[500px] lg:h-[calc(100vh-280px)]">
                                 <CardContent className="flex-1 overflow-y-auto p-5 space-y-5">
                                     {chatMessages.length === 0 ? (
