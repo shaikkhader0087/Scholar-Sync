@@ -46,6 +46,7 @@ export function LoginPage() {
         try {
             // Firebase Auth
             const userCredential = await signInWithEmailAndPassword(auth, email, password)
+            const idToken = await userCredential.user.getIdToken()
             await syncWithBackend(userCredential.user)
 
             localStorage.setItem("firebaseUser", JSON.stringify({
@@ -54,12 +55,12 @@ export function LoginPage() {
                 displayName: userCredential.user.displayName
             }))
 
-            // Also try Django backend login
+            // Django backend login — prefer firebase_token, fallback to email/password
             try {
                 const response = await fetch(`${apiUrl}/api/auth/login/`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({ firebase_token: idToken, email, password })
                 })
                 const data = await response.json()
                 if (response.ok) {
@@ -70,6 +71,7 @@ export function LoginPage() {
                 console.log("Django backend auth skipped:", backendErr.message)
             }
 
+            window.dispatchEvent(new Event("auth-change"))
             navigate("/summarizer")
         } catch (err) {
             // If Firebase fails, try Django backend only
@@ -113,6 +115,8 @@ export function LoginPage() {
         try {
             const result = await signInWithPopup(auth, googleProvider)
             const user = result.user
+            // Get Firebase ID token — this is what the backend verifies
+            const idToken = await user.getIdToken()
 
             localStorage.setItem("firebaseUser", JSON.stringify({
                 uid: user.uid,
@@ -121,15 +125,17 @@ export function LoginPage() {
                 photoURL: user.photoURL
             }))
 
-            // Try to sync with Django backend
+            // Sync with Django backend using the firebase_token
             try {
+                // Try register first (handles new users)
                 const response = await fetch(`${apiUrl}/api/auth/register/`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
+                        firebase_token: idToken,
+                        firebase_uid: user.uid,
                         username: user.displayName || user.email.split("@")[0],
                         email: user.email,
-                        password: user.uid // Use Firebase UID as password
                     })
                 })
                 const data = await response.json()
@@ -137,11 +143,11 @@ export function LoginPage() {
                     localStorage.setItem("token", data.token)
                     localStorage.setItem("user", JSON.stringify(data.user))
                 } else {
-                    // User might already exist, try login
+                    // User already exists — try login with firebase_token
                     const loginResponse = await fetch(`${apiUrl}/api/auth/login/`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ email: user.email, password: user.uid })
+                        body: JSON.stringify({ firebase_token: idToken, firebase_uid: user.uid, email: user.email })
                     })
                     const loginData = await loginResponse.json()
                     if (loginResponse.ok) {
@@ -153,6 +159,8 @@ export function LoginPage() {
                 console.log("Backend sync skipped:", backendErr.message)
             }
 
+            // Notify Header to update
+            window.dispatchEvent(new Event("auth-change"))
             navigate("/summarizer")
         } catch (err) {
             if (err.code !== "auth/popup-closed-by-user") {

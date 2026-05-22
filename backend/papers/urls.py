@@ -11,4 +11,5 @@ urlpatterns = [
     path('research-gaps/', views.generate_research_gaps, name='research_gaps'),
     path('flashcards/', views.generate_flashcards_view, name='generate_flashcards'),
     path('<int:paper_id>/flashcards/export/', views.export_flashcards_anki, name='export_flashcards'),
+    path('translate/', views.translate_content, name='translate_content'),
 ]

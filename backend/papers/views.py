@@ -322,3 +322,26 @@ def export_flashcards_anki(request, paper_id):
     safe_title = paper.title.replace(' ', '_')[:40]
     response['Content-Disposition'] = f'attachment; filename="flashcards_{safe_title}.txt"'
     return response
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def translate_content(request):
+    """Translate specific text or paper analysis content to target language."""
+    text = request.data.get('text', '').strip()
+    target_language = request.data.get('target_language', '').strip()
+    model = request.data.get('model', 'gemini-2.0-flash')
+
+    if not text or not target_language:
+        return Response(
+            {'error': 'text and target_language are required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    ai_service = AIService()
+    try:
+        translated_text = ai_service.translate_text(text, target_language, model)
+        return Response({'translated_text': translated_text})
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

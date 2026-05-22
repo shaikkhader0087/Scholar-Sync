@@ -4,7 +4,8 @@ import { useDropzone } from "react-dropzone"
 import {
     FileText, Upload, X, Sparkles, MessageSquare, BookOpen,
     HelpCircle, List, Cpu, History, Send, Loader2, Bot, User, BarChart3,
-    Trash2, Download, FlipVertical, BookMarked, Search, Table2, Settings2
+    Trash2, Download, FlipVertical, BookMarked, Search, Table2, Settings2,
+    Languages, RotateCcw
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -609,6 +610,11 @@ export function SummarizerPage() {
         summary: "", qa: "", studyGuide: "", faq: "", keyTopics: "", flashcards: "[]", tablesFigures: "[]"
     })
 
+    // Translation state
+    const [translatedContents, setTranslatedContents] = useState({})
+    const [selectedLanguages, setSelectedLanguages] = useState({})
+    const [translatingStates, setTranslatingStates] = useState({})
+
     useEffect(() => { fetchHistory() }, [])
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -687,12 +693,72 @@ export function SummarizerPage() {
         setCurrentPaperId(item.id)
         setActiveTab("summary")
         setChatMessages([{ role: "assistant", content: item.analysis.qa || "I've analyzed this paper. Ask me anything about it!" }])
+        // Reset translation states when loading a new paper
+        setTranslatedContents({})
+        setSelectedLanguages({})
+        setTranslatingStates({})
+    }
+
+    const handleTranslate = async (tabKey, lang) => {
+        if (!lang) return
+        setSelectedLanguages(prev => ({ ...prev, [tabKey]: lang }))
+        setTranslatingStates(prev => ({ ...prev, [tabKey]: true }))
+
+        const originalText = 
+            tabKey === "summary" ? results.summary :
+            tabKey === "studyGuide" ? results.studyGuide :
+            tabKey === "faq" ? results.faq :
+            tabKey === "keyTopics" ? results.keyTopics : ""
+
+        const token = localStorage.getItem("token")
+        try {
+            const response = await fetch(`${API_URL}/api/papers/translate/`, {
+                method: "POST",
+                headers: { 
+                    "Authorization": `Token ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ 
+                    text: originalText, 
+                    target_language: lang,
+                    model: selectedModel 
+                })
+            })
+            const data = await response.json()
+            if (response.ok) {
+                setTranslatedContents(prev => ({ ...prev, [tabKey]: data.translated_text }))
+            } else {
+                alert(`Translation failed: ${data.error || 'Unknown error'}`)
+            }
+        } catch (err) {
+            alert(`Translation error: ${err.message}`)
+        } finally {
+            setTranslatingStates(prev => ({ ...prev, [tabKey]: false }))
+        }
+    }
+
+    const handleResetTranslation = (tabKey) => {
+        setTranslatedContents(prev => {
+            const next = { ...prev }
+            delete next[tabKey]
+            return next
+        })
+        setSelectedLanguages(prev => {
+            const next = { ...prev }
+            delete next[tabKey]
+            return next
+        })
     }
 
     const handleAnalyze = async () => {
         setShowModelSelector(false)
         setLoading(true)
         const token = localStorage.getItem("token")
+        
+        // Reset translation states for new analysis
+        setTranslatedContents({})
+        setSelectedLanguages({})
+        setTranslatingStates({})
 
         try {
             const formData = new FormData()
@@ -978,16 +1044,67 @@ export function SummarizerPage() {
                             </div>
                         )}
 
-                        {/* Standard text tabs */}
+                        {/* Standard text tabs with Translation support */}
                         {!!results.summary && !loading && ["summary", "studyGuide", "faq", "keyTopics"].includes(activeTab) && (
-                            <Card className="border-border/50 shadow-sm">
-                                <CardContent className="p-6">
-                                    <MarkdownContent content={
-                                        activeTab === "summary" ? results.summary :
-                                        activeTab === "studyGuide" ? results.studyGuide :
-                                        activeTab === "faq" ? results.faq :
-                                        activeTab === "keyTopics" ? results.keyTopics : ""
-                                    } />
+                            <Card className="border-border/50 shadow-sm overflow-hidden">
+                                <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border/40 bg-muted/10 gap-4 flex-wrap">
+                                    <CardTitle className="text-xs font-semibold text-muted-foreground flex items-center gap-2 uppercase tracking-wider">
+                                        <FileText className="h-3.5 w-3.5 text-primary" />
+                                        {activeTab === "summary" ? "Summary Analysis" :
+                                         activeTab === "studyGuide" ? "Study Guide Details" :
+                                         activeTab === "faq" ? "Frequently Asked Questions" : "Key Topics & Themes"}
+                                    </CardTitle>
+                                    <div className="flex items-center gap-3">
+                                        {translatedContents[activeTab] && (
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                onClick={() => handleResetTranslation(activeTab)}
+                                                className="h-8 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
+                                            >
+                                                <RotateCcw className="h-3 w-3 mr-1" />
+                                                Reset to English
+                                            </Button>
+                                        )}
+                                        <div className="flex items-center gap-1.5 bg-background border border-border/60 rounded-lg px-2.5 py-1">
+                                            <Languages className="h-3.5 w-3.5 text-muted-foreground" />
+                                            <select 
+                                                value={selectedLanguages[activeTab] || ""} 
+                                                onChange={(e) => handleTranslate(activeTab, e.target.value)}
+                                                disabled={translatingStates[activeTab]}
+                                                className="bg-transparent border-0 text-xs font-medium focus:ring-0 focus:outline-none cursor-pointer pr-4 py-0"
+                                            >
+                                                <option value="" disabled>Translate to...</option>
+                                                <option value="Spanish">Spanish (Español)</option>
+                                                <option value="French">French (Français)</option>
+                                                <option value="German">German (Deutsch)</option>
+                                                <option value="Hindi">Hindi (हिन्दी)</option>
+                                                <option value="Arabic">Arabic (العربية)</option>
+                                                <option value="Chinese">Chinese (中文)</option>
+                                                <option value="Japanese">Japanese (日本語)</option>
+                                                <option value="Portuguese">Portuguese (Português)</option>
+                                                <option value="Russian">Russian (Русский)</option>
+                                                <option value="Telugu">Telugu (తెలుగు)</option>
+                                                <option value="Tamil">Tamil (தமிழ்)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-6 relative">
+                                    {translatingStates[activeTab] ? (
+                                        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground space-y-3">
+                                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                            <p className="text-sm font-medium animate-pulse">Translating to {selectedLanguages[activeTab]}...</p>
+                                        </div>
+                                    ) : (
+                                        <MarkdownContent content={
+                                            translatedContents[activeTab] || 
+                                            (activeTab === "summary" ? results.summary :
+                                             activeTab === "studyGuide" ? results.studyGuide :
+                                             activeTab === "faq" ? results.faq :
+                                             activeTab === "keyTopics" ? results.keyTopics : "")
+                                        } />
+                                    )}
                                 </CardContent>
                             </Card>
                         )}

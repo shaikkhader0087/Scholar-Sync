@@ -1,16 +1,41 @@
+import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { ShieldCheck, LogOut, User } from "lucide-react"
 
+function getAuthState() {
+    const userStr = localStorage.getItem("user")
+    return {
+        token: localStorage.getItem("token"),
+        user: userStr ? JSON.parse(userStr) : null
+    }
+}
+
 export function Header() {
     const navigate = useNavigate()
-    const userStr = localStorage.getItem("user")
-    const user = userStr ? JSON.parse(userStr) : null
-    const token = localStorage.getItem("token")
+    const [authState, setAuthState] = useState(getAuthState)
+
+    // Re-read auth from localStorage whenever login/logout happens
+    useEffect(() => {
+        const refresh = () => setAuthState(getAuthState())
+        // Custom event fired by LoginPage & RegisterPage after setting the token
+        window.addEventListener("auth-change", refresh)
+        // Native event for cross-tab sync
+        window.addEventListener("storage", refresh)
+        return () => {
+            window.removeEventListener("auth-change", refresh)
+            window.removeEventListener("storage", refresh)
+        }
+    }, [])
+
+    const { token, user } = authState
 
     const handleLogout = () => {
         localStorage.removeItem("token")
         localStorage.removeItem("user")
+        localStorage.removeItem("firebaseUser")
+        setAuthState({ token: null, user: null })
+        window.dispatchEvent(new Event("auth-change"))
         navigate("/login")
     }
 

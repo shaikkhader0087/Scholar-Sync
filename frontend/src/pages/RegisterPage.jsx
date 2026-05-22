@@ -109,6 +109,7 @@ export function RegisterPage() {
         try {
             const result = await signInWithPopup(auth, googleProvider)
             const user = result.user
+            const idToken = await user.getIdToken()
 
             localStorage.setItem("firebaseUser", JSON.stringify({
                 uid: user.uid,
@@ -117,12 +118,40 @@ export function RegisterPage() {
                 photoURL: user.photoURL
             }))
 
-            await syncWithBackend(
-                user.displayName || user.email.split("@")[0],
-                user.email,
-                user.uid
-            )
+            // Register/login with firebase_token so backend can verify the user
+            try {
+                const response = await fetch(`${apiUrl}/api/auth/register/`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        firebase_token: idToken,
+                        firebase_uid: user.uid,
+                        username: user.displayName || user.email.split("@")[0],
+                        email: user.email,
+                    })
+                })
+                const data = await response.json()
+                if (response.ok) {
+                    localStorage.setItem("token", data.token)
+                    localStorage.setItem("user", JSON.stringify(data.user))
+                } else {
+                    // Already exists — fall back to login
+                    const loginRes = await fetch(`${apiUrl}/api/auth/login/`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ firebase_token: idToken, firebase_uid: user.uid, email: user.email })
+                    })
+                    const loginData = await loginRes.json()
+                    if (loginRes.ok) {
+                        localStorage.setItem("token", loginData.token)
+                        localStorage.setItem("user", JSON.stringify(loginData.user))
+                    }
+                }
+            } catch (backendErr) {
+                console.log("Backend sync skipped:", backendErr.message)
+            }
 
+            window.dispatchEvent(new Event("auth-change"))
             navigate("/summarizer")
         } catch (err) {
             if (err.code !== "auth/popup-closed-by-user") {

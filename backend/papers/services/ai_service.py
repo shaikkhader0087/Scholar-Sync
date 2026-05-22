@@ -8,9 +8,10 @@ import anthropic
 class AIService:
     """Unified service for calling different AI providers"""
     
-    MAX_RETRIES = 3
-    RETRY_DELAY = 4  # seconds between retries (increases with backoff)
+    MAX_RETRIES = 4
+    RETRY_DELAY = 5  # seconds between retries (increases with backoff)
     CALL_DELAY = 0.5  # seconds between sequential API calls to avoid rate limits
+    GEMINI_MODELS = ['gemini-2.0-flash']
     
     def __init__(self):
         # DeepSeek uses OpenAI-compatible API
@@ -56,9 +57,9 @@ class AIService:
                 last_error = e
                 error_str = str(e)
                 # Retry on rate limit errors
-                if '429' in error_str or 'rate' in error_str.lower() or 'exhausted' in error_str.lower():
+                if '429' in error_str or '503' in error_str or 'rate' in error_str.lower() or 'exhausted' in error_str.lower() or 'unavailable' in error_str.lower():
                     wait_time = self.RETRY_DELAY * (attempt + 1)  # exponential-ish backoff
-                    print(f"{provider_name} rate limited (attempt {attempt + 1}/{retries}). Waiting {wait_time}s...")
+                    print(f"{provider_name} rate limited/unavailable (attempt {attempt + 1}/{retries}). Waiting {wait_time}s...")
                     time.sleep(wait_time)
                 else:
                     # Non-rate-limit error, don't retry
@@ -67,7 +68,7 @@ class AIService:
         raise last_error
     
     def call_gemini(self, prompt, system_message=None):
-        """Call Google Gemini API with retry logic"""
+        """Call Google Gemini API with retry logic, trying multiple models"""
         if not self.gemini_client:
             raise ValueError("Google API key not configured")
         
@@ -77,14 +78,21 @@ class AIService:
         else:
             full_prompt = f"You are a helpful research assistant that provides detailed, well-structured analysis of academic papers and research documents. Format your responses in clean markdown.\n\n{prompt}"
         
-        def _call():
-            response = self.gemini_client.models.generate_content(
-                model='gemini-2.0-flash',
-                contents=full_prompt
-            )
-            return response.text
+        last_error = None
+        for model_name in self.GEMINI_MODELS:
+            def _call(m=model_name):
+                response = self.gemini_client.models.generate_content(
+                    model=m,
+                    contents=full_prompt
+                )
+                return response.text
+            try:
+                return self._call_with_retry(_call, f"Gemini ({model_name})")
+            except Exception as e:
+                last_error = e
+                print(f"Gemini model {model_name} failed: {e}. Trying next model...")
         
-        return self._call_with_retry(_call, "Gemini")
+        raise last_error
     
     def call_deepseek(self, prompt, system_message=None):
         """Call DeepSeek API (OpenAI-compatible) with retry logic"""
@@ -137,7 +145,7 @@ class AIService:
         
         def _call():
             message = self.anthropic_client.messages.create(
-                model="claude-3-haiku-20240307",
+                model="claude-sonnet-4-20250514",
                 max_tokens=4000,
                 system=system,
                 messages=[
@@ -184,6 +192,49 @@ class AIService:
                 errors.append(f"OpenAI: {e}")
         
         raise Exception(f"All AI providers failed: {'; '.join(errors)}")
+    
+    def translate_text(self, text, target_language, model_id="gemini-2.0-flash"):
+        """Translate text to the specified target language while preserving markdown formatting."""
+        
+        # Split text into chunks if it's long to translate concurrently
+        import concurrent.futures
+        
+        # Simple paragraph chunking, keeping chunks around 1000 chars
+        chunks = []
+        paragraphs = text.split('\n\n')
+        current_chunk = ""
+        
+        for p in paragraphs:
+            if len(current_chunk) + len(p) > 1000 and current_chunk:
+                chunks.append(current_chunk)
+                current_chunk = p
+            else:
+                current_chunk = current_chunk + "\n\n" + p if current_chunk else p
+                
+        if current_chunk:
+            chunks.append(current_chunk)
+            
+        def _translate_chunk(chunk):
+            if not chunk.strip(): return chunk
+            prompt = f"""Translate the following text into {target_language}. 
+            
+Rules:
+- Preserve ALL markdown formatting (headings, bold, italic, lists, code blocks, etc.)
+- Translate accurately while maintaining the academic/technical tone
+- Keep any technical terms that are universally used in English in parentheses after the translation
+- Do NOT add any explanation or notes — only output the translated text
+
+Text to translate:
+{chunk}"""
+            system_message = f"You are a professional academic translator. Translate the given text into {target_language} accurately while preserving all markdown formatting."
+            return self._call_with_fallback(prompt, model_id, system_message)
+            
+        # Translate chunks concurrently
+        translated_chunks = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            translated_chunks = list(executor.map(_translate_chunk, chunks))
+            
+        return "\n\n".join(translated_chunks)
     
     def generate_summary(self, text, model_id, task_type="summary", custom_instructions=""):
         """Generate content based on task type using specified model"""
